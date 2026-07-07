@@ -1,8 +1,4 @@
-/* ============================================================
-   Login Jaguar Reservation — Persona 3 Frontend
-   Mantiene la misma estructura visual de la demo y conecta
-   con los endpoints del backend de Persona 1.
-   ============================================================ */
+
 const $ = (s) => document.querySelector(s);
 
 const API_URL = 'http://localhost:3000';
