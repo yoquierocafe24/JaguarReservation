@@ -38,6 +38,8 @@ app.use('/', authRoutes);
 // Aqui los demas montaran sus rutas, por ejemplo:
 //   app.use('/', require('./routes/estudiantes'));  // Persona 2
 //   app.use('/', require('./routes/reservas'));      // Persona 4 y 5
+const estudiantesRoutes = require('./routes/estudiantes');
+app.use('/', estudiantesRoutes); // Monta las rutas de estudiantes para subir el archivo nose lol
 
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => console.log(`Servidor en http://localhost:${PORT}`));
