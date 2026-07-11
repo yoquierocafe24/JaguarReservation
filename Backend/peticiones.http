@@ -9,7 +9,7 @@ GET http://localhost:3000/
 POST http://localhost:3000/login/estudiante
 Content-Type: application/json
 
-{ "cuenta": "42411126", "dni": "0801200500123" }
+{ "cuenta": "42411047", "dni": "1103200700078" }
 
 ### 3) Login estudiante (DNI incorrecto -> 401)
 POST http://localhost:3000/login/estudiante
@@ -36,7 +36,7 @@ Content-Type: application/json
 { "usuario": "guardia", "contrasena": "guardia123" }
 
 ### 7) Ver quien esta logueado
-GET http://localhost:3000/session
+GET http://localhost:3000/sesion
 
 ### 8) Cerrar sesion
-POST http://localhost:3000/logout
+GET http://localhost:3000/logout 
