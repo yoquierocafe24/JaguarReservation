@@ -33,7 +33,7 @@ router.post('/', async (req, res) => {
 
     try {
 
-       // Verificar sesión
+        // Verificar sesión
         if (!req.session.usuario) {
             return res.status(401).json({
                 ok: false,
@@ -67,12 +67,28 @@ router.post('/', async (req, res) => {
 
         } = req.body;
 
-        // Validación
-        if (!fecha || !hora_inicio || !hora_fin) {
+        // Validación de datos obligatorios
+        if (!id_espacio || !fecha || !hora_inicio || !hora_fin) {
 
             return res.status(400).json({
                 ok: false,
                 mensaje: "Faltan datos obligatorios."
+            });
+
+        }
+
+        // =======================================
+        // Regla: domingos bloqueados (la U no abre)
+        // =======================================
+
+        const diaSemana = new Date(fecha + "T00:00:00").getDay();
+        // getDay() → 0 = domingo
+
+        if (diaSemana === 0) {
+
+            return res.status(400).json({
+                ok: false,
+                mensaje: "No se puede reservar los domingos, el polideportivo está cerrado."
             });
 
         }
@@ -100,40 +116,165 @@ router.post('/', async (req, res) => {
 
         }
 
-        // Validar horario ocupado
+        // =======================================
+        // Regla: el mismo estudiante no puede tener
+        // otra reserva (en cualquier espacio) que
+        // se traslape con este horario
+        // =======================================
 
-        const [ocupado] = await db.query(
+        const [choqueEstudiante] = await db.query(
 
             `SELECT *
-            FROM Reservas
-            WHERE id_espacio = ?
-            AND fecha = ?
-            AND estado IN ('pendiente','aprobada')
-            AND (
-                (? BETWEEN hora_inicio AND hora_fin)
-                OR
-                (? BETWEEN hora_inicio AND hora_fin)
-            )`,
+             FROM Reservas
+             WHERE id_estudiante = ?
+             AND fecha = ?
+             AND estado IN ('pendiente','aprobada')
+             AND hora_inicio < ?
+             AND hora_fin > ?`,
 
             [
-
-                id_espacio,
+                id_estudiante,
                 fecha,
-                hora_inicio,
-                hora_fin
-
+                hora_fin,
+                hora_inicio
             ]
 
         );
 
-        if (ocupado.length > 0) {
+        if (choqueEstudiante.length > 0) {
 
             return res.status(400).json({
-
                 ok: false,
-                mensaje: "Ese horario ya se encuentra reservado."
-
+                mensaje: "Ya tienes una reserva en ese horario. No puedes tener dos reservas al mismo tiempo."
             });
+
+        }
+
+        // =======================================
+        // Espacios que comparten cancha física:
+        // Voleibol (2) y Baloncesto (3)
+        // Si se reserva uno, se bloquea el otro
+        // en el mismo horario.
+        // =======================================
+
+        const CANCHA_COMPARTIDA = {
+            2: [2, 3], // voleibol bloquea voleibol y baloncesto
+            3: [2, 3]  // baloncesto bloquea voleibol y baloncesto
+        };
+
+        const espaciosABloquear =
+            CANCHA_COMPARTIDA[id_espacio] || [id_espacio];
+
+        // =======================================
+        // Regla: horario ocupado
+        // - Fútbol / Voleibol / Baloncesto: bloquea
+        //   el espacio (o los compartidos) por completo.
+        // - Zona Jaguar (4): NO bloquea por horario,
+        //   se valida por disponibilidad de inventario
+        //   más abajo.
+        // =======================================
+
+        if (id_espacio != 4) {
+
+            const [ocupado] = await db.query(
+
+                `SELECT *
+                 FROM Reservas
+                 WHERE id_espacio IN (?)
+                 AND fecha = ?
+                 AND estado IN ('pendiente','aprobada')
+                 AND hora_inicio < ?
+                 AND hora_fin > ?`,
+
+                [
+                    espaciosABloquear,
+                    fecha,
+                    hora_fin,
+                    hora_inicio
+                ]
+
+            );
+
+            if (ocupado.length > 0) {
+
+                return res.status(400).json({
+                    ok: false,
+                    mensaje: "Ese horario ya se encuentra reservado."
+                });
+
+            }
+
+        }
+
+        // =======================================
+        // Regla: Zona Jaguar - validar disponibilidad
+        // de inventario para el juego seleccionado
+        // =======================================
+
+        if (id_espacio == 4) {
+
+            if (!id_item) {
+
+                return res.status(400).json({
+                    ok: false,
+                    mensaje: "Debe seleccionar un juego."
+                });
+
+            }
+
+            // Cantidad total de ese juego en inventario
+            const [item] = await db.query(
+
+                `SELECT cantidad_total
+                 FROM Inventario
+                 WHERE id_item = ?
+                 AND estado = 'activo'`,
+
+                [id_item]
+
+            );
+
+            if (item.length === 0) {
+
+                return res.status(404).json({
+                    ok: false,
+                    mensaje: "El juego seleccionado no está disponible."
+                });
+
+            }
+
+            const cantidadTotal = item[0].cantidad_total;
+
+            // Cuántas reservas ya existen para ese mismo
+            // juego, en esa misma fecha y horario
+            const [reservasDelJuego] = await db.query(
+
+                `SELECT *
+                 FROM Reservas
+                 WHERE id_espacio = 4
+                 AND id_item = ?
+                 AND fecha = ?
+                 AND estado IN ('pendiente','aprobada')
+                 AND hora_inicio < ?
+                 AND hora_fin > ?`,
+
+                [
+                    id_item,
+                    fecha,
+                    hora_fin,
+                    hora_inicio
+                ]
+
+            );
+
+            if (reservasDelJuego.length >= cantidadTotal) {
+
+                return res.status(400).json({
+                    ok: false,
+                    mensaje: "Ya no hay unidades disponibles de ese juego en ese horario."
+                });
+
+            }
 
         }
 
@@ -150,7 +291,7 @@ router.post('/', async (req, res) => {
 
         }
 
-        // Guardar reserva 
+        // Guardar reserva
 
         await db.query(
 
@@ -221,12 +362,14 @@ router.post('/', async (req, res) => {
 
 // =======================================
 // Obtener todas las reservas
+// GET /api/reservas
 // =======================================
 
 router.get('/', async (req, res) => {
 
     try {
- // Debe haber sesión
+
+        // Debe haber sesión
         if (!req.session.usuario) {
             return res.status(401).json({
                 ok: false,
@@ -292,11 +435,12 @@ router.get('/', async (req, res) => {
 
 // =======================================
 // Obtener reserva por ID
+// GET /api/reservas/:id
 // =======================================
 
-router.get('/:id', async (req,res)=>{
+router.get('/:id', async (req, res) => {
 
-    try{
+    try {
 
         if (!req.session.usuario) {
 
@@ -361,13 +505,14 @@ router.get('/:id', async (req,res)=>{
 
 // =======================================
 // Cancelar Reserva
+// PUT /api/reservas/:id/cancelar
 // =======================================
 
-router.put('/:id/cancelar', async(req,res)=>{
+router.put('/:id/cancelar', async (req, res) => {
 
-    try{
+    try {
 
-         if (!req.session.usuario) {
+        if (!req.session.usuario) {
 
             return res.status(401).json({
                 ok: false,
