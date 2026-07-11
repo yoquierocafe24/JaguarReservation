@@ -326,6 +326,38 @@ display:block;
   border-color: var(--subtexto) transparent transparent transparent;
 }
 
+.hora-chip.pasada,
+.hora-chip:disabled {
+  color: var(--borde);
+  border-color: var(--borde);
+  cursor: not-allowed;
+  background: var(--gris-fondo);
+  opacity: 0.6;
+}
+
+.hora-chip.pasada:hover,
+.hora-chip:disabled:hover {
+  border-color: var(--borde);
+  color: var(--borde);
+}
+.hora-chip.ocupada {
+  color: #fff;
+  border-color: var(--vermilion);
+  background: var(--vermilion);
+  cursor: not-allowed;
+  opacity: 0.7;
+}
+
+.hora-chip.ocupada:hover {
+  border-color: var(--vermilion);
+  color: #fff;
+}
+ .hora-chip.seleccionada {
+    background-color: #DF1B3B;
+;
+    color: white;
+    border-color: #DF1B3B;
+}
   </style>
 </head>
 <body>
@@ -437,7 +469,7 @@ display:block;
               <div class="col-12 col-md-6">
                 <div class="form-group">
                   <label>Número de teléfono</label>
-                  <input type="tel" id="campo-telefono" placeholder="+504 ────">
+                <input type="tel" id="campo-telefono" placeholder="--------" maxlength="8">
                 </div>
               </div>
               <div class="col-12 col-md-6">
@@ -452,30 +484,22 @@ display:block;
                   <input type="text" id="campo-cuenta" readonly>
                 </div>
               </div>
-              <div class="col-12">
-                <div class="form-group">
-                  <label>Tipo de usuario</label>
-                  <input type="text" readonly value="Estudiante">
-                </div>
-              </div>
             </div>
-            <p class="nota-readonly">🔒 Nombre, cuenta y tipo de usuario se toman de tu sesión y no se editan.</p>
           </div>
 
           <!-- Juegos -->
-           <div id="grupo-juego" class="card" style="display:none;">
-    <div class="card-title">  🎮 Juego seleccionado </div>
+         <div id="grupo-juego" class="card" style="display:none;">
 
-    <div class="form-group"> <label>Juego *</label>
+    <div class="card-title">
+        🎮 Juego seleccionado
+    </div>
+
+    <div class="form-group">
+
+        <label for="juego">Juego *</label>
 
         <select id="juego" class="form-select">
-            <option value="">Seleccione...</option>
-            <option>Uno</option>
-            <option>Mortal Kombat 1</option>
-            <option>Monopoly</option>
-            <option>Jenga</option>
-            <option>Fifa 2026</option>
-
+         
         </select>
 
     </div>

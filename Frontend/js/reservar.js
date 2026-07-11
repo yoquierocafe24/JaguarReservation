@@ -78,13 +78,16 @@ function renderCal() {
     const esPasado =
       fecha < new Date(TODAY.getFullYear(), TODAY.getMonth(), TODAY.getDate());
 
+    const esDomingo =
+      fecha.getDay() === 0;
+
     // Comparación correcta
     const esSel = fechaSel === fechaActual;
 
     cell.className = 'cal-dia';
 
-    if (esPasado) {
-      cell.classList.add('pasado');
+    if (esPasado || esDomingo) {
+      cell.classList.add('bloqueado');
     } else if (esSel) {
       cell.classList.add('selected');
     } else if (esHoy) {
@@ -93,7 +96,7 @@ function renderCal() {
 
     cell.textContent = d;
 
-    if (!esPasado) {
+    if (!esPasado && !esDomingo) {
       cell.onclick = () => seleccionarFecha(currentYear, currentMonth, d);
     }
 
@@ -109,28 +112,100 @@ function cambiarMes(dir) {
   renderCal();
 }
 
-function seleccionarFecha(y, m, d) {
+
+
+// ── HORAS ──
+
+// Convierte "14:00" -> "2:00 PM"
+function formatear12h(hora24) {
+  let [h, m] = hora24.split(':').map(Number);
+  const periodo = h >= 12 ? 'PM' : 'AM';
+  let h12 = h % 12;
+  if (h12 === 0) h12 = 12;
+  return `${h12}:${String(m).padStart(2,'0')} ${periodo}`;
+}
+
+async function cargarHoras() {
+  const wrap = document.getElementById('horas-wrap');
+  const horas = ['08:00–09:00','09:00–10:00','10:00–11:00',
+                 '14:00–15:00','15:00–16:00','17:00–18:00','19:00–20:00'];
+
+  wrap.innerHTML = '<p style="font-size:13px;color:var(--subtexto)">Cargando horarios...</p>';
+
+  // ¿La fecha seleccionada es HOY?
+  const hoyStr =
+    `${TODAY.getFullYear()}-${String(TODAY.getMonth()+1).padStart(2,'0')}-${String(TODAY.getDate()).padStart(2,'0')}`;
+
+  const esHoy = fechaSel === hoyStr;
+
+  const ahora = new Date();
+  const horaActualMinutos = ahora.getHours() * 60 + ahora.getMinutes();
+
+  // Consulta al backend qué horas ya están ocupadas
+  let horasOcupadas = [];
+
+  try {
+
+    const res = await fetch(
+      `http://localhost:3000/api/reservas/horarios/consultar?espacio=${espacios[espacio]}&fecha=${fechaSel}`,
+      { credentials: "include" }
+    );
+
+    const data = await res.json();
+
+    if (data.ok) {
+      horasOcupadas = data.horasOcupadas;
+    }
+
+  } catch (error) {
+    console.error("Error al consultar horarios:", error);
+  }
+
+  wrap.innerHTML = horas.map(h => {
+
+    const [horaInicioStr, horaFinStr] = h.split('–');
+    const [hh, mm] = horaFinStr.split(':').map(Number);
+    const finMinutos = hh * 60 + mm;
+
+    const yaPaso = esHoy && finMinutos <= horaActualMinutos;
+    const estaOcupada = horasOcupadas.includes(h);
+
+    // Texto visible con AM/PM
+    const textoVisible = `${formatear12h(horaInicioStr)} – ${formatear12h(horaFinStr)}`;
+
+    if (yaPaso) {
+      return `<button class="hora-chip pasada" disabled>${textoVisible}</button>`;
+    }
+
+    if (estaOcupada) {
+      return `<button class="hora-chip ocupada" disabled>${textoVisible}</button>`;
+    }
+
+    return `<button class="hora-chip" onclick="seleccionarHora(this,'${h}')">${textoVisible}</button>`;
+
+  }).join('');
+}
+function seleccionarHora(boton, hora) {
+
+    horaSel = hora;
+
+    // quitar selección anterior
+    document.querySelectorAll(".hora-chip").forEach(btn => {
+        btn.classList.remove("seleccionada");
+    });
+
+    // marcar la seleccionada
+    boton.classList.add("seleccionada");
+
+    console.log("Hora seleccionada:", horaSel);
+}
+
+
+async function seleccionarFecha(y, m, d) {
   fechaSel = `${y}-${String(m+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
   horaSel  = null;
   renderCal();
-  cargarHoras();
-}
-
-// ── HORAS ──
-// TODO: reemplazar con fetch('/horarios?espacio=X&fecha=Y') cuando el backend esté listo
-function cargarHoras() {
-  const wrap  = document.getElementById('horas-wrap');
-  const horas = ['07:00–08:00','08:00–09:00','09:00–10:00','10:00–11:00',
-                 '14:00–15:00','15:00–16:00','16:00–18:00','18:00–20:00'];
-  wrap.innerHTML = horas.map(h =>
-    `<button class="hora-chip" onclick="seleccionarHora(this,'${h}')">${h}</button>`
-  ).join('');
-}
-
-function seleccionarHora(el, hora) {
-  document.querySelectorAll('.hora-chip').forEach(c => c.classList.remove('selected'));
-  el.classList.add('selected');
-  horaSel = hora;
+  await cargarHoras();
 }
 
 // ── ENVIAR RESERVA ──
@@ -149,6 +224,7 @@ async function enviarReserva() {
     const solicitud = document.getElementById('campo-solicitud').value.trim();
     const cantAcompanantes = parseInt(document.getElementById('campo-acompanantes').value) || 0;
 
+  
     if (!fechaSel) {
         mostrarToast("Por favor selecciona una fecha.", "danger");
         return;
@@ -159,30 +235,54 @@ async function enviarReserva() {
         return;
     }
 
-    if (!telefono) {
-        mostrarToast("Por favor ingresa un teléfono.", "danger");
-        return;
-    }
+      if (
+    espacio === "zona_jaguar" &&
+    !document.getElementById("juego").value
+) {
+
+    mostrarToast(
+        "Seleccione un juego.",
+        "danger"
+    );
+
+    return;
+}
+
+
+   if (!telefono) {
+    mostrarToast("Por favor ingresa un teléfono.", "danger");
+    return;
+}
+
+if (!/^\d{8}$/.test(telefono)) {
+    mostrarToast("El teléfono debe tener exactamente 8 dígitos.", "danger");
+    return;
+}
 
     const [horaInicio, horaFin] = horaSel.split("–");
 
     const body = {
 
-        id_espacio: espacios[espacio], // ← importante
+    id_espacio: espacios[espacio],
 
-        fecha: fechaSel,
+    id_item:
+        espacio === "zona_jaguar"
+            ? document.getElementById("juego").value
+            : null,
 
-        hora_inicio: horaInicio,
+    fecha: fechaSel,
 
-        hora_fin: horaFin,
+    hora_inicio: horaInicio,
 
-        telefono: telefono,
+    hora_fin: horaFin,
 
-        solicitud_especial: solicitud,
+    telefono: telefono,
 
-        cant_acompanantes: cantAcompanantes
+    solicitud_especial: solicitud,
 
-    };
+    cant_acompanantes: cantAcompanantes
+
+};
 
     try {
 
@@ -216,7 +316,10 @@ async function enviarReserva() {
 
         espacio: espacioLabels[espacio],
 
-       juego:  document.getElementById("juego")?.value || null,
+     jjuego:
+    espacio === "zona_jaguar" && selectJuego
+        ? selectJuego.options[selectJuego.selectedIndex].text
+        : null,
 
         fecha: fechaSel,
 
@@ -316,6 +419,43 @@ function cerrarMenu(){
 
 }
 
+async function cargarJuegos() {
+
+    try {
+
+        const respuesta = await fetch(
+            "http://localhost:3000/api/inventario/juegos",
+            {
+                credentials: "include"
+            }
+        );
+
+        const data = await respuesta.json();
+
+        const opciones = data.juegos.map(juego => ({
+            value: String(juego.id_item),
+            label: juego.nombre
+        }));
+
+        if (choicesJuego) {
+            choicesJuego.clearChoices();
+            choicesJuego.setChoices(
+                [{ value: "", label: "Seleccione un juego", selected: true, disabled: false }, ...opciones],
+                'value',
+                'label',
+                true
+            );
+        }
+
+    } catch (error) {
+
+        console.error(error);
+        mostrarToast("No se pudieron cargar los juegos.", "danger");
+
+    }
+
+}
+
 
 async function cerrarSesion() {
 
@@ -353,18 +493,38 @@ async function cerrarSesion() {
 
 }
 
+// Solo permite números en el campo de teléfono, máximo 8 dígitos
+document.getElementById('campo-telefono').addEventListener('input', function(e) {
+  // Elimina cualquier caracter que no sea número
+  let valor = e.target.value.replace(/\D/g, '');
+  // Limita a 8 dígitos máximo
+  if (valor.length > 8) {
+    valor = valor.slice(0, 8);
+  }
+  e.target.value = valor;
+});
+
 
 // Iniciar calendario
 renderCal();
 
-// Inicializar Choices.js en el select de juego
+// Inicializar Choices.js en el select de juego y cargar los juegos
+let choicesJuego = null;
 const selectJuego = document.getElementById('juego');
+
 if (selectJuego) {
-  new Choices(selectJuego, {
+  choicesJuego = new Choices(selectJuego, {
     searchEnabled: false,
     itemSelectText: '',
     shouldSort: false,
     placeholder: true,
   });
 }
+
+// Solo cargar juegos si el espacio es zona_jaguar
+if (espacio === "zona_jaguar") {
+  cargarJuegos();
+}
+  
+
 

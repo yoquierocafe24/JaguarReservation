@@ -3,25 +3,37 @@ const router = express.Router();
 const db = require('../db');
 
 // =======================================
-// Generar ID de reserva (R001, R002...)
+// Generar ID de reserva (R001-2026, R002-2026...)
+// Se reinicia cada año
 // =======================================
 async function generarIdReserva() {
 
-    const [rows] = await db.query(`
-        SELECT id_reserva
-        FROM Reservas
-        ORDER BY id_reserva DESC
-        LIMIT 1
-    `);
+    // Año actual completo, ej: 2026
+    const anioActual = new Date().getFullYear();
+
+    // Busca el último id_reserva generado ESTE año
+    const [rows] = await db.query(
+
+        `SELECT id_reserva
+         FROM Reservas
+         WHERE id_reserva LIKE ?
+         ORDER BY CAST(SUBSTRING(id_reserva, 2, 3) AS UNSIGNED) DESC
+         LIMIT 1`,
+
+        [`R%-${anioActual}`]
+
+    );
 
     if (rows.length === 0) {
-        return "R001";
+        return `R001-${anioActual}`;
     }
 
-    const ultimo = parseInt(rows[0].id_reserva.substring(1));
-    const nuevo = ultimo + 1;
+    // Extrae el número, ej: "R047-2026" -> 47
+    const partes = rows[0].id_reserva.split('-');
+    const ultimoNumero = parseInt(partes[0].substring(1));
+    const nuevoNumero = ultimoNumero + 1;
 
-    return "R" + String(nuevo).padStart(3, "0");
+    return `R${String(nuevoNumero).padStart(3, "0")}-${anioActual}`;
 }
 
 // =======================================
@@ -433,6 +445,85 @@ router.get('/', async (req, res) => {
 
 });
 
+
+// =======================================
+// Obtener horarios ocupados
+// GET /api/reservas/horarios/consultar?espacio=1&fecha=2026-07-15
+// =======================================
+
+router.get('/horarios/consultar', async (req, res) => {
+
+    try {
+
+        if (!req.session.usuario) {
+
+            return res.status(401).json({
+                ok: false,
+                mensaje: "Debe iniciar sesión."
+            });
+
+        }
+
+        const { espacio, fecha } = req.query;
+
+        if (!espacio || !fecha) {
+
+            return res.status(400).json({
+                ok: false,
+                mensaje: "Faltan parámetros: espacio y fecha."
+            });
+
+        }
+
+        // Espacios que comparten cancha física
+        const CANCHA_COMPARTIDA = {
+            2: [2, 3],
+            3: [2, 3]
+        };
+
+        const espaciosAConsultar =
+            CANCHA_COMPARTIDA[espacio] || [espacio];
+
+        const [rows] = await db.query(
+
+            `SELECT hora_inicio, hora_fin
+             FROM Reservas
+             WHERE id_espacio IN (?)
+             AND fecha = ?
+             AND estado IN ('pendiente','aprobada')`,
+
+            [espaciosAConsultar, fecha]
+
+        );
+
+        // Formatea como "HH:MM–HH:MM" para que coincida
+        // con el formato de los chips del frontend
+        const horasOcupadas = rows.map(r => {
+
+            const hi = r.hora_inicio.substring(0,5);
+            const hf = r.hora_fin.substring(0,5);
+            return `${hi}–${hf}`;
+
+        });
+
+        res.json({
+            ok: true,
+            horasOcupadas
+        });
+
+    } catch (error) {
+
+        console.error(error);
+
+        res.status(500).json({
+            ok: false,
+            mensaje: "Error del servidor."
+        });
+
+    }
+
+});
+
 // =======================================
 // Obtener reserva por ID
 // GET /api/reservas/:id
@@ -502,6 +593,8 @@ router.get('/:id', async (req, res) => {
     }
 
 });
+
+
 
 // =======================================
 // Cancelar Reserva

@@ -16,14 +16,14 @@
 /* TARJETA PRINCIPAL */
 
 .confirm-card{
-    max-width:780px;
+    width:420px;
+    max-width:90%;
     margin:auto;
     background:white;
     border-radius:18px;
-    padding:45px;
+    padding:30px;
     border:1px solid var(--borde);
     box-shadow:0 10px 30px rgba(0,0,0,.05);
-
 }
 
 
@@ -31,15 +31,15 @@
 /* ICONO DE CONFIRMACION */
 
 .success-icon{
-    width:95px;
-    height:95px;
+    width:75px;
+    height:75px;
     background:#dcfce7;
     border-radius:50%;
     display:flex;
     justify-content:center;
     align-items:center;
     margin:auto;
-    font-size:48px;
+    font-size:38px;
     color:#22c55e;
 
 }
@@ -51,7 +51,7 @@
 .confirm-title{
     text-align:center;
     margin-top:22px;
-    font-size:28px;
+    font-size:24px;
     font-weight:700;
     color:var(--texto);
 
@@ -154,8 +154,8 @@
 
 
 .qr-box{
-    width:220px;
-    height:220px;
+    width:160px;
+    height:1600px;
     margin:auto;
     border:2px dashed var(--borde);
     border-radius:18px;
@@ -172,7 +172,7 @@
 
 
 .qr-box i{
-    font-size:65px;
+    font-size:50px;
     margin-bottom:12px;
     color:var(--crimson);
 
