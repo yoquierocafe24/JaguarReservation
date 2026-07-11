@@ -182,6 +182,7 @@ router.post('/login/estudiante', async (req, res) => {
             rol: 'estudiante',
             usuario: req.session.usuario,
             redirigir:  'Frontend/usuario/inicio.html'
+
         });
 
     } catch (error) {
@@ -234,7 +235,6 @@ router.post('/logout', (req, res) => {
     });
 
 });
-
 
 
 module.exports = router;

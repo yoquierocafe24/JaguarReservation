@@ -21,8 +21,7 @@ const FIELDS = {
     <div class="field">
       <label>Correo institucional</label>
       <div class="iwrap"><i class="ti ti-mail ii"></i>
-
-        <input id="lg-a" type="email" placeholder="correo@unitec.edu" autocomplete="username"></div>
+        <input id="lg-a" type="email" placeholder="correo@ceutec.hn" autocomplete="username"></div>
     </div>
     <div class="field">
       <label>Contraseña</label>
@@ -49,19 +48,16 @@ const HINTS = {
 };
 
 const ENDPOINTS = {
-  estudiante: '/api/auth/login/estudiante',
-  admin: '/api/auth/login/admin',
-  guardia: '/api/auth/login/guardia'
-};
-
-const REDIRECTS = {
-  estudiante: 'Frontend/usuario/inicio.html',
   estudiante: '/login/estudiante',
   admin: '/login/admin',
   guardia: '/login/guardia'
 };
 
-
+const REDIRECTS = {
+  estudiante: 'estudiante/inicio.html',
+  admin: 'admin/dashboard.html',
+  guardia: 'guardia/asistencia.html'
+};
 
 function setTipo(t) {
   tipo = t;
