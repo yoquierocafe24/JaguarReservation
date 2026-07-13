@@ -14,6 +14,7 @@ require('./db');
 
 const authRoutes = require('./routes/auth');
 const reservasRoutes = require('./routes/reservas');
+//const estudiantesRoutes = require('./routes/estudiantes');
 const estudiantesRoutes = require('./routes/estudiantes');
 const inventarioRoutes = require('./routes/inventario');
 
@@ -66,7 +67,8 @@ app.get('/', (req, res) => {
 
 app.use('/api/auth', authRoutes);
 app.use('/api/reservas', reservasRoutes);
-app.use('/api/estudiantes', estudiantesRoutes);
+app.use('/', estudiantesRoutes);
+//app.use('/api/estudiantes', estudiantesRoutes);
 app.use('/api/inventario', inventarioRoutes);
 
 
