@@ -54,11 +54,12 @@ const ENDPOINTS = {
   guardia: '/api/auth/login/guardia'
 };
 
+// Respaldo por si el backend no manda "redirigir": deben coincidir
+// con los valores que devuelve routes/auth.js.
 const REDIRECTS = {
   estudiante: 'Frontend/usuario/inicio.html',
-  estudiante: '/login/estudiante',
-  admin: '/login/admin',
-  guardia: '/login/guardia'
+  admin: 'admin/dashboard.html',
+  guardia: 'guardia/dashboard.html'
 };
 
 
