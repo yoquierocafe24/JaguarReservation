@@ -14,7 +14,7 @@ router.post('/login/admin', async (req, res) => {
         const { correo, contrasena } = req.body;
 
         const [rows] = await db.query(
-            'SELECT * FROM Administradores WHERE correo = ?',
+            'SELECT * FROM administrador WHERE correo = ?',
             [correo]
         );
 
@@ -160,7 +160,10 @@ router.post('/login/estudiante', async (req, res) => {
 
         }
 
-      if (!estudiante.dni.endsWith(dni)) {
+        // Solo se aceptan los ultimos 5 digitos del DNI (mismo contrato que
+        // login.js). Sin el chequeo de formato, un sufijo mas corto como "9"
+        // autenticaria a cualquier estudiante cuyo DNI termine en 9.
+        if (!/^\d{5}$/.test(dni) || !estudiante.dni.endsWith(dni)) {
 
             return res.status(401).json({
                 ok: false,
