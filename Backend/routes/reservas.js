@@ -395,9 +395,16 @@ router.get('/', async (req, res) => {
         if (req.session.usuario.rol === "admin") {
 
             [rows] = await db.query(`
-                SELECT *
-                FROM Reservas
-                ORDER BY fecha, hora_inicio
+                SELECT
+                    r.*,
+                    e.nombre AS nombre_espacio,
+                    i.nombre AS nombre_item
+                FROM Reservas r
+                INNER JOIN Espacios e
+                    ON e.id_espacio = r.id_espacio
+                LEFT JOIN Inventario i
+                    ON i.id_item = r.id_item
+                ORDER BY r.fecha, r.hora_inicio
             `);
 
         }
@@ -407,10 +414,17 @@ router.get('/', async (req, res) => {
 
             [rows] = await db.query(
 
-                `SELECT *
-                 FROM Reservas
-                 WHERE id_estudiante = ?
-                 ORDER BY fecha, hora_inicio`,
+                `SELECT
+                    r.*,
+                    e.nombre AS nombre_espacio,
+                    i.nombre AS nombre_item
+                 FROM Reservas r
+                 INNER JOIN Espacios e
+                    ON e.id_espacio = r.id_espacio
+                 LEFT JOIN Inventario i
+                    ON i.id_item = r.id_item
+                 WHERE r.id_estudiante = ?
+                 ORDER BY r.fecha, r.hora_inicio`,
 
                 [req.session.usuario.id]
 
